@@ -35,7 +35,7 @@ function rows() { return document.querySelectorAll('tr[data-cy-files-list-row], 
 function rowName(row) { return row.dataset.file || row.querySelector('[data-cy-files-list-row-name], .files-list__row-name')?.textContent?.trim() }
 function iconHost(row) { return row.querySelector('[data-cy-files-list-row-icon], .files-list__row-icon, .thumbnail, .files-list__row-icon-container') }
 function hasNativeCollaborationIcon(host) {
-  return /folder-(shared|public)|icon-shared|groupfolder|team-folder/i.test(host.outerHTML)
+  return /folder-(shared|public|group)|icon-(shared|group)|groupfolder|team-folder/i.test(host.outerHTML)
 }
 
 function plainFolder() {
@@ -86,6 +86,7 @@ function scheduleRefresh() { clearTimeout(timer); timer = setTimeout(refresh, 20
 observe()
 window.addEventListener('popstate', scheduleRefresh)
 window.addEventListener('hashchange', scheduleRefresh)
-document.addEventListener('DOMContentLoaded', refresh, { once: true })
+if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', refresh, { once: true })
+else refresh()
 document.addEventListener('files:list:updated', scheduleRefresh)
 document.addEventListener('nextcloud:files:navigation', scheduleRefresh)
