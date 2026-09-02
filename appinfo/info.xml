@@ -1,0 +1,23 @@
+<?xml version="1.0"?>
+<info xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+      xsi:noNamespaceSchemaLocation="https://apps.nextcloud.com/schema/apps/info.xsd">
+  <id>team_folders</id>
+  <name>Team Folders</name>
+  <summary>Recursive, glanceable exposure indicators for Files</summary>
+  <description>Shows direct and nested team, link, and public exposure on folders.</description>
+  <version>0.1.0</version>
+  <licence>agpl</licence>
+  <author mail="">Team Folders contributors</author>
+  <namespace>TeamFolders</namespace>
+  <category>files</category>
+  <dependencies>
+    <nextcloud min-version="34" max-version="34" />
+    <php min-version="8.2" />
+  </dependencies>
+  <background-jobs>
+    <job>OCA\TeamFolders\BackgroundJob\ReconcileJob</job>
+  </background-jobs>
+  <commands>
+    <command>OCA\TeamFolders\Command\RebuildCommand</command>
+  </commands>
+</info>

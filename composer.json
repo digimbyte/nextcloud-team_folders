@@ -1,0 +1,11 @@
+{
+  "name": "team-folders/team-folders",
+  "description": "Recursive share exposure indicators for Nextcloud Files",
+  "type": "project",
+  "license": "AGPL-3.0-or-later",
+  "autoload": {"psr-4": {"OCA\\TeamFolders\\": "lib/"}},
+  "autoload-dev": {"psr-4": {"OCA\\TeamFolders\\Tests\\": "tests/"}},
+  "require": {"php": "^8.2"},
+  "require-dev": {"phpunit/phpunit": "^10.5"},
+  "scripts": {"test": "phpunit"}
+}
