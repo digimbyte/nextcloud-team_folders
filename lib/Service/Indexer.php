@@ -7,6 +7,7 @@ use OCA\TeamFolders\Db\ExposureEntryMapper;
 use OCA\TeamFolders\Db\ShareFactMapper;
 use OCP\Files\Folder;
 use OCP\Files\Node;
+use OCP\Files\NotFoundException;
 use OCP\IUserManager;
 use OCP\Share\IManager;
 use OCP\Share\IShare;
@@ -33,6 +34,10 @@ final class Indexer {
             $this->facts->upsert($share->getFullId(), $storageId, $node->getId(), $mask, $share->getExpirationDate()?->getTimestamp(), $generation, $now);
             $this->recomputeFromNode($storageId, $node->getId());
             $this->state->touchStorage($storageId, 'ready', $generation, null);
+        } catch (NotFoundException $e) {
+            // Providers can temporarily retain a share after its node has gone.
+            // It is invalid input, not a failed reconciliation generation.
+            $this->deleteShare($share->getFullId());
         } catch (\Throwable $e) {
             $this->logger->warning('Unable to index share', ['exception' => $e]);
             if ($failOnError) throw $e;
