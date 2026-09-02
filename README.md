@@ -29,4 +29,16 @@ npm run build
 composer test
 ```
 
+Node 24 is required by `@nextcloud/files` v4. On a Docker host, the complete
+isolated build and unit-test pass can be run with:
+
+```bash
+sh scripts/test-vm.sh /path/to/team_folders
+```
+
+GitHub Actions runs the same frontend checks on Node 24 and the backend suite
+across PHP 8.2–8.5. The live NC34 smoke test additionally verifies app
+enablement, schema creation, background-job registration, and an authenticated
+`/api/v1/indicators` response.
+
 Install this directory as `custom_apps/team_folders`, build assets, enable with `occ app:enable team_folders`, configure Nextcloud system cron, then run `occ team-folders:rebuild`.

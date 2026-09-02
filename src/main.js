@@ -1,5 +1,6 @@
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
+import { nestedOnly } from './exposure.js'
 
 const ICONS = {
   people: ['👤', 'Shared with people'],
@@ -47,7 +48,7 @@ function decorate(items) {
       const wrap = document.createElement('span')
       wrap.className = `team-folders${state.stale ? ' team-folders--stale' : ''}`
       for (const kind of state.direct) wrap.append(badge(kind, false))
-      for (const kind of state.nested.filter((kind) => !state.direct.includes(kind))) wrap.append(badge(kind, true))
+      for (const kind of nestedOnly(state.direct, state.nested)) wrap.append(badge(kind, true))
       host.append(wrap)
     }
   } finally {
