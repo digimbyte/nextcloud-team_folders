@@ -1,5 +1,6 @@
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
+import { evaluateHealth } from './health.js'
 
 const ICONS = {
   people: '👤',
@@ -18,6 +19,7 @@ const LABELS = {
 
 let requestGeneration = 0
 let timer
+let healthRetry = 0
 
 function currentDirectory() { return new URL(window.location.href).searchParams.get('dir') || '/' }
 
@@ -46,7 +48,53 @@ function plainFolder() {
   return node
 }
 
-function decorate(items) {
+function checkRenderedHealth(items, apiStatus) {
+  const visibleRows = [...rows()]
+  let matchedRows = 0
+  let expectedBases = 0
+  let expectedOverlays = 0
+  for (const row of visibleRows) {
+    const state = items[rowName(row)]
+    if (!state) continue
+    matchedRows++
+    const host = iconHost(row)
+    const hasExposure = (state.solid?.length || 0) + (state.ghost?.length || 0) > 0
+    if (hasExposure || (host && hasNativeCollaborationIcon(host))) expectedBases++
+    expectedOverlays += (state.solid?.length || 0) + (state.ghost?.length || 0)
+  }
+  const detail = {
+    ...evaluateHealth({
+      apiStatus,
+      itemCount: Object.keys(items).length,
+      matchedRows,
+      expectedBases,
+      actualBases: document.querySelectorAll('.team-folders__plain-folder').length,
+      expectedOverlays,
+      actualOverlays: document.querySelectorAll('.team-folders__overlay').length,
+    }),
+    apiStatus,
+    itemCount: Object.keys(items).length,
+    matchedRows,
+    checkedAt: new Date().toISOString(),
+  }
+  window.__teamFoldersHealth = detail
+  document.documentElement.dataset.teamFoldersHealth = detail.ok ? 'healthy' : 'degraded'
+  window.dispatchEvent(new CustomEvent('team-folders:health', { detail }))
+  if (!detail.ok) console.error('Team Folders post-render health check failed', detail)
+  return detail.ok
+}
+
+function showHealthFailure(show) {
+  document.querySelector('.team-folders__health-error')?.remove()
+  if (!show) return
+  const warning = document.createElement('div')
+  warning.className = 'team-folders__health-error'
+  warning.setAttribute('role', 'alert')
+  warning.textContent = 'Team Folders indicators failed to render'
+  document.body.append(warning)
+}
+
+function decorate(items, apiStatus) {
   observer.disconnect()
   try {
     for (const row of rows()) {
@@ -68,15 +116,28 @@ function decorate(items) {
       for (const kind of state.ghost || []) wrap.append(overlay(kind, true))
       host.append(wrap)
     }
-  } finally { observe() }
+  } finally {
+    observe()
+    requestAnimationFrame(() => {
+      const healthy = checkRenderedHealth(items, apiStatus)
+      if (!healthy && healthRetry++ < 1) setTimeout(refresh, 500)
+      else if (healthy) { healthRetry = 0; showHealthFailure(false) }
+      else showHealthFailure(true)
+    })
+  }
 }
 
 async function refresh() {
   const mine = ++requestGeneration
   try {
     const { data } = await axios.get(generateUrl('/apps/team_folders/api/v1/indicators'), { params: { dir: currentDirectory() } })
-    if (mine === requestGeneration) decorate(data.items || {})
-  } catch (error) { console.warn('Team Folders could not load indicators', error) }
+    if (mine === requestGeneration) decorate(data.items || {}, data.health?.status || 'unknown')
+  } catch (error) {
+    window.__teamFoldersHealth = { ok: false, checks: { api: false }, error: String(error), checkedAt: new Date().toISOString() }
+    document.documentElement.dataset.teamFoldersHealth = 'degraded'
+    console.error('Team Folders API health check failed', error)
+    showHealthFailure(true)
+  }
 }
 
 const observer = new MutationObserver(() => { clearTimeout(timer); timer = setTimeout(refresh, 150) })

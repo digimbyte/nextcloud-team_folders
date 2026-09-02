@@ -5,3 +5,4 @@
 .team-folders__overlay--public{background:var(--color-error);color:var(--color-primary-element-text)}
 .team-folders__overlay--ghost{background:var(--color-main-background);color:var(--color-text-maxcontrast);border-style:dashed;opacity:.58;box-shadow:none}
 @media (prefers-contrast:more){.team-folders__overlay--ghost{opacity:.85}}
+.team-folders__health-error{position:fixed;inset-inline-end:20px;inset-block-end:20px;z-index:10000;padding:10px 14px;border-radius:8px;background:var(--color-error);color:var(--color-primary-element-text);font-weight:600;box-shadow:0 3px 12px rgba(0,0,0,.35)}
