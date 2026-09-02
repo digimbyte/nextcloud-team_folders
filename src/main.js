@@ -34,16 +34,34 @@ function overlay(kind, ghost) {
 function rows() { return document.querySelectorAll('tr[data-cy-files-list-row], tr[data-file], .files-list__row') }
 function rowName(row) { return row.dataset.file || row.querySelector('[data-cy-files-list-row-name], .files-list__row-name')?.textContent?.trim() }
 function iconHost(row) { return row.querySelector('[data-cy-files-list-row-icon], .files-list__row-icon, .thumbnail, .files-list__row-icon-container') }
+function hasNativeCollaborationIcon(host) {
+  return /folder-(shared|public)|icon-shared|groupfolder|team-folder/i.test(host.outerHTML)
+}
+
+function plainFolder() {
+  const node = document.createElement('span')
+  node.className = 'team-folders__plain-folder'
+  node.setAttribute('aria-hidden', 'true')
+  node.innerHTML = '<svg viewBox="0 0 32 32"><path d="M2 8a4 4 0 0 1 4-4h7l3 4h10a4 4 0 0 1 4 4v12a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4Z"/></svg>'
+  return node
+}
 
 function decorate(items) {
   observer.disconnect()
   try {
     for (const row of rows()) {
       row.querySelector('.team-folders')?.remove()
+      row.querySelector('.team-folders__plain-folder')?.remove()
       const state = items[rowName(row)]
-      if (!state || (!(state.solid?.length) && !(state.ghost?.length))) continue
+      if (!state) continue
       const host = iconHost(row)
       if (!host) continue
+      // The index response contains every visible folder. Cover Nextcloud's
+      // native shared/Groupfolder glyph with the neutral base icon even when
+      // this folder has no exposure flags.
+      const hasExposure = (state.solid?.length || 0) > 0 || (state.ghost?.length || 0) > 0
+      if (hasExposure || hasNativeCollaborationIcon(host)) host.append(plainFolder())
+      if (!hasExposure) continue
       const wrap = document.createElement('span')
       wrap.className = 'team-folders'
       for (const kind of state.solid || []) wrap.append(overlay(kind, false))
