@@ -1,7 +1,7 @@
 {
   "name": "team-folders",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.0.0",
   "type": "module",
   "engines": {"node": "^24.0.0"},
   "scripts": {"build": "vite build", "dev": "vite build --watch", "test": "vitest run", "lint": "eslint src"},

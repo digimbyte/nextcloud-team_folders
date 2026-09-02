@@ -1,0 +1,45 @@
+name: Release
+
+on:
+  push:
+    tags: ['v*']
+
+permissions:
+  contents: write
+
+jobs:
+  package:
+    environment: app-store-release
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 24, cache: npm }
+      - run: npm ci && npm test && npm run build
+      - uses: shivammathur/setup-php@v2
+        with: { php-version: '8.2', coverage: none }
+      - run: composer install --no-interaction --prefer-dist && composer test
+      - name: Build deterministic runtime archive
+        run: |
+          mkdir -p dist/team_folders
+          cp -a appinfo css img js lib templates CHANGELOG.md LICENSE PRIVACY.md README.md SECURITY.md dist/team_folders/
+          find dist/team_folders -exec touch -h -d '@0' {} +
+          tar --sort=name --mtime='@0' --owner=0 --group=0 --numeric-owner -czf dist/team_folders.tar.gz -C dist team_folders
+          sha256sum dist/team_folders.tar.gz > dist/team_folders.tar.gz.sha256
+      - name: Sign archive
+        env:
+          APP_PRIVATE_KEY_B64: ${{ secrets.APP_PRIVATE_KEY_B64 }}
+        run: |
+          test -n "$APP_PRIVATE_KEY_B64"
+          echo "$APP_PRIVATE_KEY_B64" | base64 -d > /tmp/team_folders.key
+          openssl dgst -sha512 -sign /tmp/team_folders.key -out dist/team_folders.tar.gz.sig dist/team_folders.tar.gz
+          rm -f /tmp/team_folders.key
+      - uses: anchore/sbom-action@v0
+        with: { path: dist/team_folders, output-file: dist/team_folders.spdx.json }
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: |
+            dist/team_folders.tar.gz
+            dist/team_folders.tar.gz.sha256
+            dist/team_folders.tar.gz.sig
+            dist/team_folders.spdx.json

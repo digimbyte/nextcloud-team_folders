@@ -13,14 +13,23 @@ final class ExposureIndex {
     /**
      * Only accepts Nodes already resolved through the current user's Folder view.
      * This is the authorization boundary: never expose arbitrary indexed node IDs.
-     * @param list<Node> $nodes
-     * @return array<string, array{direct:list<string>,nested:list<string>,stale:bool}>
+     * @return array<string, array{solid:list<string>,ghost:list<string>}>
      */
-    public function describeVisibleNodes(array $nodes): array {
+    public function describeVisibleNodes(Folder $folder): array {
+        $nodes = $folder->getDirectoryListing();
+        $ancestorMasks = [];
+        $current = $folder;
+        while (true) {
+            $storageId = NodeIdentity::storageId($current);
+            $entry = $this->mapper->findRaw($storageId, $current->getId());
+            $ancestorMasks[$storageId] = ($ancestorMasks[$storageId] ?? 0) | ($entry['direct_mask'] ?? 0);
+            try { $current = $current->getParent(); } catch (\Throwable) { break; }
+            if ($current->getPath() === '/') break;
+        }
         $grouped = [];
         foreach ($nodes as $node) {
             if (!$node instanceof Folder) continue;
-            $storageId = (int)$node->getStorage()->getId();
+            $storageId = NodeIdentity::storageId($node);
             $grouped[$storageId][] = $node;
         }
         $result = [];
@@ -28,10 +37,11 @@ final class ExposureIndex {
             $entries = $this->mapper->findForStorageAndNodes((int)$storageId, array_map(static fn(Node $n): int => $n->getId(), $storageNodes));
             foreach ($storageNodes as $node) {
                 $entry = $entries[$node->getId()] ?? null;
+                $solid = Exposure::normalize(($ancestorMasks[(int)$storageId] ?? 0) | ($entry?->getDirectMask() ?? 0));
+                $ghost = Exposure::normalize(($entry?->getDescendantMask() ?? 0) & ~$solid);
                 $result[$node->getName()] = [
-                    'direct' => Exposure::labels($entry?->getDirectMask() ?? 0),
-                    'nested' => Exposure::labels($entry?->getDescendantMask() ?? 0),
-                    'stale' => $entry === null || $entry->getDirty() === 1,
+                    'solid' => Exposure::labels($solid),
+                    'ghost' => Exposure::labels($ghost),
                 ];
             }
         }

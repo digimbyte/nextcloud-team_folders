@@ -12,8 +12,8 @@ final class RebuildCommand extends Command {
     public function __construct(private Indexer $indexer) { parent::__construct(); }
     protected function configure(): void { $this->setName('team-folders:rebuild')->setDescription('Queue or repair the Team Folders recursive exposure index'); }
     protected function execute(InputInterface $input, OutputInterface $output): int {
-        $this->indexer->repairDirtyBatch(500);
-        $output->writeln('<info>Reconciliation requested.</info>');
+        $result = $this->indexer->rebuild();
+        $output->writeln(sprintf('<info>Indexed %d shares in generation %d.</info>', $result['shares'], $result['generation']));
         return self::SUCCESS;
     }
 }

@@ -23,7 +23,10 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: team-folders-js
-          path: js/team-folders-main.js
+          path: |
+            js/team-folders-main.js
+            js/team-folders-admin.js
+            js/assets/
 
   backend:
     runs-on: ubuntu-latest

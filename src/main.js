@@ -1,81 +1,73 @@
 import axios from '@nextcloud/axios'
 import { generateUrl } from '@nextcloud/router'
-import { nestedOnly } from './exposure.js'
 
 const ICONS = {
-  people: ['👤', 'Shared with people'],
-  link: ['🔗', 'Link shared'],
-  public: ['🌐', 'Publicly accessible'],
-  federated: ['☁', 'Federated share'],
-  other: ['◆', 'Other share type'],
+  people: '👤',
+  link: '🔗',
+  public: '🌐',
+  federated: '☁️',
+  other: '◆',
+}
+const LABELS = {
+  people: 'Shared with people',
+  link: 'Link shared',
+  public: 'Public',
+  federated: 'Federated',
+  other: 'Other',
 }
 
-let generation = 0
+let requestGeneration = 0
+let timer
 
-function currentDirectory() {
-  const url = new URL(window.location.href)
-  return url.searchParams.get('dir') || '/'
-}
+function currentDirectory() { return new URL(window.location.href).searchParams.get('dir') || '/' }
 
-function badge(kind, nested) {
-  const [glyph, text] = ICONS[kind] || ICONS.other
+function overlay(kind, ghost) {
   const node = document.createElement('span')
-  node.className = `team-folders__badge team-folders__badge--${kind}${nested ? ' team-folders__badge--nested' : ''}`
-  node.textContent = glyph
-  node.title = nested ? `Contains nested item: ${text}` : text
+  node.className = `team-folders__overlay team-folders__overlay--${kind}${ghost ? ' team-folders__overlay--ghost' : ''}`
+  node.setAttribute('role', 'img')
+  node.title = LABELS[kind] || LABELS.other
   node.setAttribute('aria-label', node.title)
+  node.textContent = ICONS[kind] || ICONS.other
   return node
 }
 
-function findRows() {
-  return document.querySelectorAll('tr[data-cy-files-list-row], tr[data-file], .files-list__row')
-}
-
-function rowName(row) {
-  return row.dataset.file || row.querySelector('[data-cy-files-list-row-name], .files-list__row-name')?.textContent?.trim()
-}
+function rows() { return document.querySelectorAll('tr[data-cy-files-list-row], tr[data-file], .files-list__row') }
+function rowName(row) { return row.dataset.file || row.querySelector('[data-cy-files-list-row-name], .files-list__row-name')?.textContent?.trim() }
+function iconHost(row) { return row.querySelector('[data-cy-files-list-row-icon], .files-list__row-icon, .thumbnail, .files-list__row-icon-container') }
 
 function decorate(items) {
-  // Decorating mutates the file list; pause observation to avoid a request loop.
   observer.disconnect()
   try {
-    for (const row of findRows()) {
-      const state = items[rowName(row)]
+    for (const row of rows()) {
       row.querySelector('.team-folders')?.remove()
-      if (!state || (!state.direct.length && !state.nested.length)) continue
-      const host = row.querySelector('[data-cy-files-list-row-name], .files-list__row-name, .filename')
+      const state = items[rowName(row)]
+      if (!state || (!(state.solid?.length) && !(state.ghost?.length))) continue
+      const host = iconHost(row)
       if (!host) continue
       const wrap = document.createElement('span')
-      wrap.className = `team-folders${state.stale ? ' team-folders--stale' : ''}`
-      for (const kind of state.direct) wrap.append(badge(kind, false))
-      for (const kind of nestedOnly(state.direct, state.nested)) wrap.append(badge(kind, true))
+      wrap.className = 'team-folders'
+      for (const kind of state.solid || []) wrap.append(overlay(kind, false))
+      for (const kind of state.ghost || []) wrap.append(overlay(kind, true))
       host.append(wrap)
     }
-  } finally {
-    observeFiles()
-  }
+  } finally { observe() }
 }
 
 async function refresh() {
-  const mine = ++generation
+  const mine = ++requestGeneration
   try {
     const { data } = await axios.get(generateUrl('/apps/team_folders/api/v1/indicators'), { params: { dir: currentDirectory() } })
-    if (mine === generation) decorate(data.items || {})
-  } catch (error) {
-    console.warn('Team Folders could not load indicators', error)
-  }
+    if (mine === requestGeneration) decorate(data.items || {})
+  } catch (error) { console.warn('Team Folders could not load indicators', error) }
 }
 
-let timer
-const observer = new MutationObserver(() => {
-  clearTimeout(timer)
-  timer = setTimeout(refresh, 80)
-})
+const observer = new MutationObserver(() => { clearTimeout(timer); timer = setTimeout(refresh, 150) })
+function observe() { observer.observe(document.body, { subtree: true, childList: true }) }
+function scheduleRefresh() { clearTimeout(timer); timer = setTimeout(refresh, 20) }
 
-function observeFiles() {
-  observer.observe(document.body, { subtree: true, childList: true })
-}
-
-observeFiles()
-window.addEventListener('popstate', refresh)
+observe()
+window.addEventListener('popstate', scheduleRefresh)
+window.addEventListener('hashchange', scheduleRefresh)
 document.addEventListener('DOMContentLoaded', refresh, { once: true })
+document.addEventListener('files:list:updated', scheduleRefresh)
+document.addEventListener('nextcloud:files:navigation', scheduleRefresh)

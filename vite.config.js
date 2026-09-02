@@ -4,6 +4,9 @@ export default defineConfig({
   build: {
     outDir: 'js',
     emptyOutDir: true,
-    lib: { entry: 'src/main.js', formats: ['es'], fileName: () => 'team-folders-main.js' },
+    rollupOptions: {
+      input: { 'team-folders-main': 'src/main.js', 'team-folders-admin': 'src/admin.js' },
+      output: { entryFileNames: '[name].js' },
+    },
   },
 })

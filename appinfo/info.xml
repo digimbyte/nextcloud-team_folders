@@ -5,9 +5,12 @@
   <name>Team Folders</name>
   <summary>Recursive, glanceable exposure indicators for Files</summary>
   <description>Shows direct and nested team, link, and public exposure on folders.</description>
-  <version>0.1.0</version>
+  <version>1.0.0</version>
   <licence>agpl</licence>
-  <author mail="">Team Folders contributors</author>
+  <author mail="digimbyte@users.noreply.github.com">digimbyte</author>
+  <website>https://github.com/digimbyte/nextcloud-team_folders</website>
+  <bugs>https://github.com/digimbyte/nextcloud-team_folders/issues</bugs>
+  <repository type="git">https://github.com/digimbyte/nextcloud-team_folders.git</repository>
   <namespace>TeamFolders</namespace>
   <category>files</category>
   <dependencies>
@@ -19,5 +22,9 @@
   </background-jobs>
   <commands>
     <command>OCA\TeamFolders\Command\RebuildCommand</command>
+    <command>OCA\TeamFolders\Command\StatusCommand</command>
   </commands>
+  <settings>
+    <admin>OCA\TeamFolders\Settings\AdminSettings</admin>
+  </settings>
 </info>

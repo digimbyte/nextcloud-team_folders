@@ -4,6 +4,7 @@ declare(strict_types=1);
 namespace OCA\TeamFolders\Controller;
 
 use OCA\TeamFolders\Service\ExposureIndex;
+use OCA\TeamFolders\Service\IndexStateService;
 use OCP\AppFramework\Controller;
 use OCP\AppFramework\Http\Attribute\NoAdminRequired;
 use OCP\AppFramework\Http\JSONResponse;
@@ -12,7 +13,7 @@ use OCP\IRequest;
 use OCP\IUserSession;
 
 final class IndicatorController extends Controller {
-    public function __construct(string $appName, IRequest $request, private IUserSession $session, private IRootFolder $root, private ExposureIndex $index) {
+    public function __construct(string $appName, IRequest $request, private IUserSession $session, private IRootFolder $root, private ExposureIndex $index, private IndexStateService $state) {
         parent::__construct($appName, $request);
     }
 
@@ -23,6 +24,11 @@ final class IndicatorController extends Controller {
         // Folder::get enforces the current user's mount and ACL view.
         $folder = $this->root->getUserFolder($user->getUID())->get($dir);
         if (!$folder instanceof \OCP\Files\Folder) return new JSONResponse(['error' => 'Not a folder'], 400);
-        return new JSONResponse(['directory' => $dir, 'items' => $this->index->describeVisibleNodes($folder->getDirectoryListing())]);
+        $health = $this->state->status();
+        return new JSONResponse([
+            'directory' => $dir,
+            'items' => $this->index->describeVisibleNodes($folder),
+            'health' => ['status' => $health['status'], 'generation' => $health['generation'], 'lastSuccess' => $health['lastSuccess']],
+        ]);
     }
 }
